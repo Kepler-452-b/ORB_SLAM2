@@ -97,7 +97,7 @@ protected:
 
     void ComputeThreeMaxima(std::vector<int>* histo, const int L, int &ind1, int &ind2, int &ind3);
 
-    float mfNNratio;
+    float mfNNratio;//保证第二小比第一小足够小的因子
     bool mbCheckOrientation;
 };
 

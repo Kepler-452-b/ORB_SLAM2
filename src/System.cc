@@ -25,10 +25,17 @@
 #include <thread>
 #include <pangolin/pangolin.h>
 #include <iomanip>
+#include <unistd.h>
 
 namespace ORB_SLAM2
 {
-
+/**
+ * @brief System::System
+ * @param strVocFile 词袋文件路径
+ * @param strSettingsFile 视频参数
+ * @param sensor 传感器类型,单目,双目,等等. 枚举类型
+ * @param bUseViewer 是否可视化,布尔类型
+ */
 System::System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor,
                const bool bUseViewer):mSensor(sensor), mpViewer(static_cast<Viewer*>(NULL)), mbReset(false),mbActivateLocalizationMode(false),
         mbDeactivateLocalizationMode(false)
@@ -61,6 +68,7 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     //Load ORB Vocabulary
     cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
 
+    //从文件中载入词典
     mpVocabulary = new ORBVocabulary();
     bool bVocLoad = mpVocabulary->loadFromTextFile(strVocFile);
     if(!bVocLoad)
@@ -81,12 +89,17 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
     mpFrameDrawer = new FrameDrawer(mpMap);
     mpMapDrawer = new MapDrawer(mpMap, strSettingsFile);
 
+    //tracking所在线程为主线程，不需要fork
     //Initialize the Tracking thread
     //(it will live in the main thread of execution, the one that called this constructor)
     mpTracker = new Tracking(this, mpVocabulary, mpFrameDrawer, mpMapDrawer,
                              mpMap, mpKeyFrameDatabase, strSettingsFile, mSensor);
 
     //Initialize the Local Mapping thread and launch
+    /**
+      后面的代码会在mpLocalMapper设定mpTracker，而mpTracker里又包含指向system的指针
+      同理，mpLoopCloser也有类似设定，mpTracker、mpLocalMapper和mpLoopCloser是相互关联的
+      */
     mpLocalMapper = new LocalMapping(mpMap, mSensor==MONOCULAR);
     mptLocalMapping = new thread(&ORB_SLAM2::LocalMapping::Run,mpLocalMapper);
 
@@ -214,7 +227,12 @@ cv::Mat System::TrackRGBD(const cv::Mat &im, const cv::Mat &depthmap, const doub
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
     return Tcw;
 }
-
+/**
+ * @brief System::TrackMonocular 单目跟踪
+ * @param im 图片
+ * @param timestamp 时间戳
+ * @return
+ */
 cv::Mat System::TrackMonocular(const cv::Mat &im, const double &timestamp)
 {
     if(mSensor!=MONOCULAR)

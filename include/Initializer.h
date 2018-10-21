@@ -35,6 +35,12 @@ class Initializer
 public:
 
     // Fix the reference frame
+    /**
+     * @brief Initializer
+     * @param ReferenceFrame
+     * @param sigma
+     * @param iterations
+     */
     Initializer(const Frame &ReferenceFrame, float sigma = 1.0, int iterations = 200);
 
     // Computes in parallel a fundamental matrix and a homography
@@ -73,14 +79,14 @@ private:
 
 
     // Keypoints from Reference Frame (Frame 1)
-    vector<cv::KeyPoint> mvKeys1;
+    vector<cv::KeyPoint> mvKeys1;//纠正畸变后的角点
 
     // Keypoints from Current Frame (Frame 2)
     vector<cv::KeyPoint> mvKeys2;
 
     // Current Matches from Reference to Current
-    vector<Match> mvMatches12;
-    vector<bool> mvbMatched1;
+    vector<Match> mvMatches12;//记录匹配的点对.元素为pair,第一个为参考帧角点索引,第二个为当前帧角点索引
+    vector<bool> mvbMatched1;//是否匹配了,索引和参考帧角点的索引对应
 
     // Calibration
     cv::Mat mK;
@@ -92,7 +98,7 @@ private:
     int mMaxIterations;
 
     // Ransac sets
-    vector<vector<size_t> > mvSets;   
+    vector<vector<size_t> > mvSets;//ransac 产生的随机点,mvSets[i][j] 表示第i个迭代,第j个数据点. 数据点的值为匹配点对mvMatches12的索引
 
 };
 

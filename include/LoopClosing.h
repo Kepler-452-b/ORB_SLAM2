@@ -121,14 +121,14 @@ protected:
 
     // Loop detector variables
     KeyFrame* mpCurrentKF;
-    KeyFrame* mpMatchedKF;
+    KeyFrame* mpMatchedKF;//匹配的闭环帧
     std::vector<ConsistentGroup> mvConsistentGroups;
     std::vector<KeyFrame*> mvpEnoughConsistentCandidates;
     std::vector<KeyFrame*> mvpCurrentConnectedKFs;
-    std::vector<MapPoint*> mvpCurrentMatchedPoints;
-    std::vector<MapPoint*> mvpLoopMapPoints;
-    cv::Mat mScw;
-    g2o::Sim3 mg2oScw;
+    std::vector<MapPoint*> mvpCurrentMatchedPoints;//闭环帧那里拿到的地图点,索引下标和当前帧角点对应
+    std::vector<MapPoint*> mvpLoopMapPoints;//和闭环帧关联的帧的地图点
+    cv::Mat mScw;//闭环帧位姿*相对位姿,即纠正后的当前世界坐标系的位姿
+    g2o::Sim3 mg2oScw;//同上
 
     long unsigned int mLastLoopKFid;
 

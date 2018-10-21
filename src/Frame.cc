@@ -133,6 +133,11 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
+    /**
+     * @brief 提取该帧所有特征，图像金字塔所有图的特征全部放到同一个vector内
+     * mvKeys存储角点
+     * mDescriptors存储描述符
+     */
     ExtractORB(0,imGray);
 
     N = mvKeys.size();
@@ -170,31 +175,45 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeSt
     AssignFeaturesToGrid();
 }
 
-
+/**
+ * @brief Frame::Frame
+ * @param imGray 灰度图片
+ * @param timeStamp 时间戳
+ * @param extractor 提取子,包含图像金字塔,提取特征数,显著差异阈值等等,和提取orb特征以及计算brief描述符相关
+ * @param voc 词典
+ * @param K 相机标定
+ * @param distCoef
+ * @param bf
+ * @param thDepth
+ */
 Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
      mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
     // Frame ID
-    mnId=nNextId++;
+    mnId=nNextId++;//帧ID
 
     // Scale Level Info
-    mnScaleLevels = mpORBextractorLeft->GetLevels();
+
+    mnScaleLevels = mpORBextractorLeft->GetLevels();//int 类型，图像金字塔层数
     mfScaleFactor = mpORBextractorLeft->GetScaleFactor();
     mfLogScaleFactor = log(mfScaleFactor);
-    mvScaleFactors = mpORBextractorLeft->GetScaleFactors();
-    mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();
-    mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();
+    mvScaleFactors = mpORBextractorLeft->GetScaleFactors();//vector 大于1
+    mvInvScaleFactors = mpORBextractorLeft->GetInverseScaleFactors();//vectro 小于1
+    mvLevelSigma2 = mpORBextractorLeft->GetScaleSigmaSquares();//平方，下同
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
-    ExtractORB(0,imGray);
+    //提取orb角点,计算描述符
+    ExtractORB(0,imGray);//frame里的成员函数,艹,函数名竟然大写...
 
     N = mvKeys.size();
 
     if(mvKeys.empty())
         return;
 
+    //畸变矫正
+    //矫正后的关键点存储在mvKeysUn内
     UndistortKeyPoints();
 
     // Set no stereo information
@@ -207,11 +226,15 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
     // This is done only for the first Frame (or after a change in the calibration)
     if(mbInitialComputations)
     {
+        //同样的方法矫正边界四个点（边界就为imGray的四个点:(0,0),(0,c),(r,0）,(r,c),其中r和c分别表示行数和列数)
+        //矫正结果就是mnMaxX，mnMinX，mnMaxY，mnMinY
         ComputeImageBounds(imGray);
 
-        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
-        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+        //乘以它,得到矩阵块的下标
+        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);//FRAME_GRID_COLS--64
+        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);//FRAME_GRID_ROWS--48
 
+        //相机内参
         fx = K.at<float>(0,0);
         fy = K.at<float>(1,1);
         cx = K.at<float>(0,2);
@@ -222,8 +245,11 @@ Frame::Frame(const cv::Mat &imGray, const double &timeStamp, ORBextractor* extra
         mbInitialComputations=false;
     }
 
-    mb = mbf/fx;
+    mb = mbf/fx;//跟双目基线相关
 
+    //将角点分配到方块中，存储在mGrid内
+    //方块的作用,就是根据位置,快速检索它周围的角点
+    //mGrid实际上是根据方块位置，得到该方块内所有角点，存储的为角点在mvKeysUn的下标
     AssignFeaturesToGrid();
 }
 
@@ -232,7 +258,7 @@ void Frame::AssignFeaturesToGrid()
     int nReserve = 0.5f*N/(FRAME_GRID_COLS*FRAME_GRID_ROWS);
     for(unsigned int i=0; i<FRAME_GRID_COLS;i++)
         for (unsigned int j=0; j<FRAME_GRID_ROWS;j++)
-            mGrid[i][j].reserve(nReserve);
+            mGrid[i][j].reserve(nReserve);//mGrid是数组，数组内元素是vector<std::size_t>
 
     for(int i=0;i<N;i++)
     {
@@ -240,10 +266,11 @@ void Frame::AssignFeaturesToGrid()
 
         int nGridPosX, nGridPosY;
         if(PosInGrid(kp,nGridPosX,nGridPosY))
-            mGrid[nGridPosX][nGridPosY].push_back(i);
+            mGrid[nGridPosX][nGridPosY].push_back(i);//畸变矫正后的格子点
     }
 }
 
+//提取该帧的角点
 void Frame::ExtractORB(int flag, const cv::Mat &im)
 {
     if(flag==0)
@@ -263,31 +290,39 @@ void Frame::UpdatePoseMatrices()
     mRcw = mTcw.rowRange(0,3).colRange(0,3);
     mRwc = mRcw.t();
     mtcw = mTcw.rowRange(0,3).col(3);
-    mOw = -mRcw.t()*mtcw;
+    mOw = -mRcw.t()*mtcw;//相机中心在世界坐标系中的坐标
 }
 
+/**
+ * @brief Frame::isInFrustum 判断这个帧是否能够看到地图点
+ * @param pMP
+ * @param viewingCosLimit
+ * @return
+ */
 bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 {
     pMP->mbTrackInView = false;
 
     // 3D in absolute coordinates
-    cv::Mat P = pMP->GetWorldPos(); 
+    cv::Mat P = pMP->GetWorldPos();//地图点世界坐标
 
     // 3D in camera coordinates
-    const cv::Mat Pc = mRcw*P+mtcw;
+    const cv::Mat Pc = mRcw*P+mtcw;//地图点在相机中的坐标
     const float &PcX = Pc.at<float>(0);
     const float &PcY= Pc.at<float>(1);
     const float &PcZ = Pc.at<float>(2);
 
     // Check positive depth
-    if(PcZ<0.0f)
+    if(PcZ<0.0f)//是否是正深度
         return false;
 
     // Project in image and check it is not outside
+    //计算地图点在帧中投影
     const float invz = 1.0f/PcZ;
     const float u=fx*PcX*invz+cx;
     const float v=fy*PcY*invz+cy;
 
+    //是否在图像以外
     if(u<mnMinX || u>mnMaxX)
         return false;
     if(v<mnMinY || v>mnMaxY)
@@ -297,21 +332,21 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     const float maxDistance = pMP->GetMaxDistanceInvariance();
     const float minDistance = pMP->GetMinDistanceInvariance();
     const cv::Mat PO = P-mOw;
-    const float dist = cv::norm(PO);
+    const float dist = cv::norm(PO);//地图点到相机的距离
 
     if(dist<minDistance || dist>maxDistance)
         return false;
 
    // Check viewing angle
-    cv::Mat Pn = pMP->GetNormal();
+    cv::Mat Pn = pMP->GetNormal();//地图点方向,即观察的平均方向
 
-    const float viewCos = PO.dot(Pn)/dist;
+    const float viewCos = PO.dot(Pn)/dist;//和平均方向的夹角的余弦值
 
     if(viewCos<viewingCosLimit)
-        return false;
+        return false;//夹角过大,抛弃
 
     // Predict scale in the image
-    const int nPredictedLevel = pMP->PredictScale(dist,this);
+    const int nPredictedLevel = pMP->PredictScale(dist,this);//地图点的尺寸,可以根据距离算出来
 
     // Data used by the tracking
     pMP->mbTrackInView = true;
@@ -324,6 +359,17 @@ bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
     return true;
 }
 
+
+//r为窗口大小，可以理解为：在以x，y为中心，边长为2r的正方形，如果图像包含该正方形，则继续计算，否则，返回空
+/**
+ * @brief Frame::GetFeaturesInArea 获得(x,y)周围的角点,该范围是以(x,y)为中心,边长为2r的正方形
+ * @param x
+ * @param y
+ * @param r
+ * @param minLevel 图像金字塔的范围,下同
+ * @param maxLevel
+ * @return 装有角点的矢量
+ */
 vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel, const int maxLevel) const
 {
     vector<size_t> vIndices;
@@ -351,7 +397,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     {
         for(int iy = nMinCellY; iy<=nMaxCellY; iy++)
         {
-            const vector<size_t> vCell = mGrid[ix][iy];
+            const vector<size_t> vCell = mGrid[ix][iy];//这里的size_t，表示角点在mvKeysUn中的索引下标
             if(vCell.empty())
                 continue;
 
@@ -381,7 +427,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
 
 bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
 {
-    posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);
+    posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);//在哪个方块上，下同
     posY = round((kp.pt.y-mnMinY)*mfGridElementHeightInv);
 
     //Keypoint's coordinates are undistorted, which could cause to go out of the image
@@ -403,14 +449,14 @@ void Frame::ComputeBoW()
 
 void Frame::UndistortKeyPoints()
 {
-    if(mDistCoef.at<float>(0)==0.0)
+    if(mDistCoef.at<float>(0)==0.0)//mDistCoef.at<float>(0)表示k1，为0，表示没有畸变
     {
         mvKeysUn=mvKeys;
         return;
     }
 
     // Fill matrix with points
-    cv::Mat mat(N,2,CV_32F);
+    cv::Mat mat(N,2,CV_32F);//N行2列,存储为矫正的关键点坐标
     for(int i=0; i<N; i++)
     {
         mat.at<float>(i,0)=mvKeys[i].pt.x;
@@ -418,9 +464,16 @@ void Frame::UndistortKeyPoints()
     }
 
     // Undistort points
-    mat=mat.reshape(2);
-    cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);
-    mat=mat.reshape(1);
+    mat=mat.reshape(2);//2通道，变为N行1列
+    /**
+     * @brief 进行畸变矫正
+     * 首先，乘以内参的逆矩阵
+     * 接着，进行畸变矫正
+     * 最后，再乘以内参矩阵
+     * 具体参考opencv文档
+     */
+    cv::undistortPoints(mat,mat,mK,mDistCoef,cv::Mat(),mK);//mK--相机内参矩阵，mDistCoef--相机失真矫正参数
+    mat=mat.reshape(1);//1通道，变为N行2列
 
     // Fill undistorted keypoint vector
     mvKeysUn.resize(N);
@@ -452,7 +505,6 @@ void Frame::ComputeImageBounds(const cv::Mat &imLeft)
         mnMaxX = max(mat.at<float>(1,0),mat.at<float>(3,0));
         mnMinY = min(mat.at<float>(0,1),mat.at<float>(1,1));
         mnMaxY = max(mat.at<float>(2,1),mat.at<float>(3,1));
-
     }
     else
     {

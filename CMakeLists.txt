@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 2.8)
 project(ORB_SLAM2)
 
+#禁止优化，用于gdb调试时防止乱序，正式编译的时候把这部分删掉
+IF(CMAKE_COMPILER_IS_GNUCC)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
+    set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
+ENDIF(CMAKE_COMPILER_IS_GNUCC)
+
+
 IF(NOT CMAKE_BUILD_TYPE)
   SET(CMAKE_BUILD_TYPE Release)
 ENDIF()
@@ -26,15 +33,27 @@ else()
    message(FATAL_ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+set(PROJECT_DLLVERSION)
+set(LIB_INSTALL_DIR lib CACHE STRING "Install location of libraries (e.g. lib32 or lib64 for multilib installations)")
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_INSTALL_PREFIX}/${LIB_INSTALL_DIR}cmake/ /usr/${LIB_INSTALL_DIR}cmake )
 LIST(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake_modules)
 
-find_package(OpenCV 3.0 QUIET)
-if(NOT OpenCV_FOUND)
-   find_package(OpenCV 2.4.3 QUIET)
-   if(NOT OpenCV_FOUND)
-      message(FATAL_ERROR "OpenCV > 2.4.3 not found.")
-   endif()
+OPTION(BUILD_UTILS	"Set to OFF to not build utils" ON)
+OPTION(USE_CONTRIB 	"Set to ON if contrib are installed" OFF)
+OPTION(BUILD_SHARED_LIBS 	"Set to OFF to build static libraries" ON)
+
+message("CMAKE_MODULE_PATH： ${CMAKE_MODULE_PATH}")
+find_package(OpenCV 4.0.0 QUIET)
+if(OpenCV_FOUND)
+   message("命令行找到了啊！")
+   message("OpenCV_VERSION: ${OpenCV_VERSION}")
 endif()
+#if(NOT OpenCV_FOUND)
+#   find_package(OpenCV 2.4.3 QUIET)
+#   if(NOT OpenCV_FOUND)
+#      message(FATAL_ERROR "OpenCV > 2.4.3 not found.")
+#   endif()
+#endif()
 
 find_package(Eigen3 3.1.0 REQUIRED)
 find_package(Pangolin REQUIRED)
@@ -107,6 +126,7 @@ add_executable(mono_kitti
 Examples/Monocular/mono_kitti.cc)
 target_link_libraries(mono_kitti ${PROJECT_NAME})
 
+message("PROJECT_NAME: ${PROJECT_NAME}")
 add_executable(mono_euroc
 Examples/Monocular/mono_euroc.cc)
 target_link_libraries(mono_euroc ${PROJECT_NAME})

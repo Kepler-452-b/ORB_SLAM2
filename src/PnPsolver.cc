@@ -64,16 +64,21 @@ namespace ORB_SLAM2
 {
 
 
+/**
+ * @brief PnPsolver::PnPsolver 初始化PnP求解器. 该求解器用于3d-2d估计位姿
+ * @param F
+ * @param vpMapPointMatches
+ */
 PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches):
     pws(0), us(0), alphas(0), pcs(0), maximum_number_of_correspondences(0), number_of_correspondences(0), mnInliersi(0),
     mnIterations(0), mnBestInliers(0), N(0)
 {
     mvpMapPointMatches = vpMapPointMatches;
-    mvP2D.reserve(F.mvpMapPoints.size());
-    mvSigma2.reserve(F.mvpMapPoints.size());
-    mvP3Dw.reserve(F.mvpMapPoints.size());
-    mvKeyPointIndices.reserve(F.mvpMapPoints.size());
-    mvAllIndices.reserve(F.mvpMapPoints.size());
+    mvP2D.reserve(F.mvpMapPoints.size());//2d--角点
+    mvSigma2.reserve(F.mvpMapPoints.size());//图像金字塔相关
+    mvP3Dw.reserve(F.mvpMapPoints.size());//3d--地图点
+    mvKeyPointIndices.reserve(F.mvpMapPoints.size());//角点在当前帧中的索引,上述三个变量的索引都和它对应
+    mvAllIndices.reserve(F.mvpMapPoints.size());//用于产生随机数
 
     int idx=0;
     for(size_t i=0, iend=vpMapPointMatches.size(); i<iend; i++)
@@ -92,8 +97,8 @@ PnPsolver::PnPsolver(const Frame &F, const vector<MapPoint*> &vpMapPointMatches)
                 cv::Mat Pos = pMP->GetWorldPos();
                 mvP3Dw.push_back(cv::Point3f(Pos.at<float>(0),Pos.at<float>(1), Pos.at<float>(2)));
 
-                mvKeyPointIndices.push_back(i);
-                mvAllIndices.push_back(idx);               
+                mvKeyPointIndices.push_back(i);//当前帧角点的索引
+                mvAllIndices.push_back(idx);//用于产生随机数
 
                 idx++;
             }
@@ -117,7 +122,15 @@ PnPsolver::~PnPsolver()
   delete [] pcs;
 }
 
-
+/**
+ * @brief PnPsolver::SetRansacParameters
+ * @param probability
+ * @param minInliers
+ * @param maxIterations
+ * @param minSet
+ * @param epsilon
+ * @param th2 误差相关,具体要根据图像金字塔定
+ */
 void PnPsolver::SetRansacParameters(double probability, int minInliers, int maxIterations, int minSet, float epsilon, float th2)
 {
     mRansacProb = probability;

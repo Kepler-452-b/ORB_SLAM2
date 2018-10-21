@@ -760,7 +760,7 @@ void Tracking::CreateInitialMapMonocular()
 
     // Scale initial baseline
     cv::Mat Tc2w = pKFcur->GetPose();//当前帧的位姿
-    Tc2w.col(3).rowRange(0,3) = Tc2w.col(3).rowRange(0,3)*invMedianDepth;//设定平移的单位为平均深度
+    Tc2w.col(3).rowRange(0,3) = Tc2w.col(3).rowRange(0,3)*invMedianDepth;//设定平移的单位为中位深度
     pKFcur->SetPose(Tc2w);
 
     // Scale points
@@ -770,7 +770,7 @@ void Tracking::CreateInitialMapMonocular()
         if(vpAllMapPoints[iMP])
         {
             MapPoint* pMP = vpAllMapPoints[iMP];
-            pMP->SetWorldPos(pMP->GetWorldPos()*invMedianDepth);//地图点坐标的单位是初始帧的平均深度
+            pMP->SetWorldPos(pMP->GetWorldPos()*invMedianDepth);//地图点坐标的单位是初始帧的中位深度,不是平均深度
         }
     }
 
@@ -822,6 +822,7 @@ bool Tracking::TrackReferenceKeyFrame()
     //mBowVec存储字和打分,mFeatVec存储子树根节点和哪些节点属于该子树
     //mBowVec为map，索引键为wordId，值为该图像在该字下的分值
     //mFeatVec也为map，索引为子树的根节点的Id，它表示哪些角点在这个子树内，存储的当然是角点的索引下标
+    //因为角点匹配是根据倒词典搜索的,所以要计算bow
     mCurrentFrame.ComputeBoW();
 
     // We perform first an ORB matching with the reference keyframe

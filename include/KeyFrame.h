@@ -141,9 +141,9 @@ public:
     long unsigned int mnBAFixedForKF;
 
     // Variables used by the keyframe database
-    long unsigned int mnLoopQuery;
-    int mnLoopWords;
-    float mLoopScore;
+    long unsigned int mnLoopQuery;//回环检测时,根据词袋模型,查找候选闭环帧的时候将会用到,避免查找重复
+    int mnLoopWords;//和当前帧多少字相同
+    float mLoopScore;//和当前帧的匹配成绩
     long unsigned int mnRelocQuery;
     int mnRelocWords;
     float mRelocScore;
@@ -167,7 +167,9 @@ public:
     const cv::Mat mDescriptors;
 
     //BoW
+    //mBowVec为map,索引键为wordId，值为该图像在该字下的分值
     DBoW2::BowVector mBowVec;
+    //mFeatVec也为map，索引为子树的根节点的Id，它表示vCurrentDesc里哪些元素在这个子树内，存储的当然是该元素在vCurrentDesc内的索引下标
     DBoW2::FeatureVector mFeatVec;
 
     // Pose relative to parent (this is computed when bad flag is activated)
@@ -200,7 +202,7 @@ protected:
     cv::Mat Cw; // Stereo middel point. Only for visualization
 
     // MapPoints associated to keypoints
-    std::vector<MapPoint*> mvpMapPoints;
+    std::vector<MapPoint*> mvpMapPoints;//索引下标和角点对应
 
     // BoW
     KeyFrameDatabase* mpKeyFrameDB;
@@ -209,13 +211,20 @@ protected:
     // Grid over the image to speed up feature matching
     std::vector< std::vector <std::vector<size_t> > > mGrid;
 
+    //以下三个变量,在调用UpdateConnections经会被更新
+    //除此之外,mConnectedKeyFrameWeights还会在调用AddConnection时被更新
+    //调用AddConnection的情况:帧A调用了UpdateConnections,添加帧B为关联帧,将会使得帧B调用AddConnection,添加帧A为其共视帧.
+    //上述过程中,帧B的mvpOrderedConnectedKeyFrames并没有察觉到变化
+
+    //存储和当前帧共视的所有帧,键为帧,值为权重,即共视点的个数
     std::map<KeyFrame*,int> mConnectedKeyFrameWeights;
+    //存储关联帧,所谓关联帧,是指共视点大于15的那些帧,按权重从大到小排序
     std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames;
     std::vector<int> mvOrderedWeights;
 
     // Spanning Tree and Loop Edges
     bool mbFirstConnection;
-    KeyFrame* mpParent;
+    KeyFrame* mpParent;//更新连接的时候,关联度最大的那个帧为父帧,除此之外,也可以通过ChangeParent更改
     std::set<KeyFrame*> mspChildrens;
     std::set<KeyFrame*> mspLoopEdges;
 

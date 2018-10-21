@@ -84,7 +84,7 @@ public:
 public:
     long unsigned int mnId;
     static long unsigned int nNextId;
-    long int mnFirstKFid;
+    long int mnFirstKFid;//第一个发现它的帧id
     long int mnFirstFrame;
     int nObs;
 
@@ -121,7 +121,7 @@ protected:
      std::map<KeyFrame*,size_t> mObservations;
 
      // Mean viewing direction
-     cv::Mat mNormalVector;
+     cv::Mat mNormalVector;//观察它的平均方向
 
      // Best descriptor to fast matching
      cv::Mat mDescriptor;
@@ -138,6 +138,7 @@ protected:
      MapPoint* mpReplaced;
 
      // Scale invariance distances
+     //帧距离这个点多远的范围内，可以看到它
      float mfMinDistance;
      float mfMaxDistance;
 

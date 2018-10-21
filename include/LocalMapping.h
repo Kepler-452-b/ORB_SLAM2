@@ -106,6 +106,7 @@ protected:
 
     std::list<KeyFrame*> mlNewKeyFrames;
 
+    //插入关键帧时，从待插入队列里取出的关键帧存在这儿
     KeyFrame* mpCurrentKeyFrame;
 
     std::list<MapPoint*> mlpRecentAddedMapPoints;

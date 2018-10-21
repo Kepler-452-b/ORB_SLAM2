@@ -54,6 +54,17 @@ class Tracking
 {  
 
 public:
+    /**
+     * @brief Tracking
+     * @param pSys 创建它的system类的指针
+     * @param pVoc 引用的词典
+     * @param pFrameDrawer
+     * @param pMapDrawer
+     * @param pMap 地图点
+     * @param pKFDB 关键帧数据库
+     * @param strSettingPath 视频参数路径
+     * @param sensor
+     */
     Tracking(System* pSys, ORBVocabulary* pVoc, FrameDrawer* pFrameDrawer, MapDrawer* pMapDrawer, Map* pMap,
              KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor);
 
@@ -98,8 +109,8 @@ public:
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
-    std::vector<int> mvIniMatches;
-    std::vector<cv::Point2f> mvbPrevMatched;
+    std::vector<int> mvIniMatches;//和初始帧角点索引对应
+    std::vector<cv::Point2f> mvbPrevMatched;//到目前为止,得到的信息是,如果初始帧没有匹配,则为初始帧的角点坐标,否则,为当前帧的角点坐标
     std::vector<cv::Point3f> mvIniP3D;
     Frame mInitialFrame;
 
@@ -179,7 +190,7 @@ protected:
     MapDrawer* mpMapDrawer;
 
     //Map
-    Map* mpMap;
+    Map* mpMap;//地图点,和其它线程共享,即含有地图点,也含有帧
 
     //Calibration matrix
     cv::Mat mK;

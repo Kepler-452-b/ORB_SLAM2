@@ -34,6 +34,7 @@ std::vector<cv::Mat> Converter::toDescriptorVector(const cv::Mat &Descriptors)
     return vDesc;
 }
 
+//g2o内位姿的节点是SE3Quat，它利用四元数表示旋转，三维矢量表示旋转。这个的目的就是将4*4的位姿矩阵转化为SE3Quat
 g2o::SE3Quat Converter::toSE3Quat(const cv::Mat &cvT)
 {
     Eigen::Matrix<double,3,3> R;

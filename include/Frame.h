@@ -109,6 +109,7 @@ public:
     double mTimeStamp;
 
     // Calibration matrix and OpenCV distortion parameters.
+    // 标定矩阵和失真参数
     cv::Mat mK;
     static float fx;
     static float fy;
@@ -116,7 +117,7 @@ public:
     static float cy;
     static float invfx;
     static float invfy;
-    cv::Mat mDistCoef;
+    cv::Mat mDistCoef;//畸变矫正参数
 
     // Stereo baseline multiplied by fx.
     float mbf;
@@ -134,7 +135,7 @@ public:
     // Vector of keypoints (original for visualization) and undistorted (actually used by the system).
     // In the stereo case, mvKeysUn is redundant as images must be rectified.
     // In the RGB-D case, RGB images can be distorted.
-    std::vector<cv::KeyPoint> mvKeys, mvKeysRight;
+    std::vector<cv::KeyPoint> mvKeys, mvKeysRight;//角点
     std::vector<cv::KeyPoint> mvKeysUn;
 
     // Corresponding stereo coordinate and depth for each keypoint.
@@ -147,39 +148,40 @@ public:
     DBoW2::FeatureVector mFeatVec;
 
     // ORB descriptor, each row associated to a keypoint.
-    cv::Mat mDescriptors, mDescriptorsRight;
+    cv::Mat mDescriptors, mDescriptorsRight;//角点描述符
 
     // MapPoints associated to keypoints, NULL pointer if no association.
-    std::vector<MapPoint*> mvpMapPoints;
+    std::vector<MapPoint*> mvpMapPoints;//存储地图点,索引和角点对应
 
     // Flag to identify outlier associations.
-    std::vector<bool> mvbOutlier;
+    std::vector<bool> mvbOutlier;//是否是外点,索引和角点对应
 
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
     static float mfGridElementWidthInv;
     static float mfGridElementHeightInv;
-    std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+    std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];//数组,数组元素为vector,vector内元素为角点的索引下标
 
     // Camera pose.
     cv::Mat mTcw;
 
     // Current and Next Frame id.
     static long unsigned int nNextId;
-    long unsigned int mnId;
+    long unsigned int mnId;//帧ID
 
     // Reference Keyframe.
     KeyFrame* mpReferenceKF;
 
     // Scale pyramid info.
-    int mnScaleLevels;
-    float mfScaleFactor;
-    float mfLogScaleFactor;
+    int mnScaleLevels;//金字塔层数
+    float mfScaleFactor;//缩放因子
+    float mfLogScaleFactor;//对数缩放因子
     vector<float> mvScaleFactors;
     vector<float> mvInvScaleFactors;
     vector<float> mvLevelSigma2;
     vector<float> mvInvLevelSigma2;
 
     // Undistorted Image Bounds (computed once).
+    //矫正后,图像的边界
     static float mnMinX;
     static float mnMaxX;
     static float mnMinY;

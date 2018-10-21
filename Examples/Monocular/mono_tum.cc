@@ -27,12 +27,18 @@
 #include<opencv2/core/core.hpp>
 
 #include<System.h>
+#include<unistd.h>
 
 using namespace std;
 
 void LoadImages(const string &strFile, vector<string> &vstrImageFilenames,
                 vector<double> &vTimestamps);
 
+/*
+ * @param argv[1] 词汇配置文件路径，txt形式的二进制文件
+ * @Param argv[2] 视频参数配置文件路径，yaml格式
+ * @Param argv[3] 视频文件路径
+ * */
 int main(int argc, char **argv)
 {
     if(argc != 4)
@@ -42,17 +48,24 @@ int main(int argc, char **argv)
     }
 
     // Retrieve paths to images
-    vector<string> vstrImageFilenames;
-    vector<double> vTimestamps;
+    vector<string> vstrImageFilenames;//帧的文件路径
+    vector<double> vTimestamps;//帧时间戳
+    //rgb.txt存储时间戳和帧的关系
     string strFile = string(argv[3])+"/rgb.txt";
     LoadImages(strFile, vstrImageFilenames, vTimestamps);
 
     int nImages = vstrImageFilenames.size();
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
+    //初始化slam木有视频相关的数据，只是词典和视频的配置
+    //创建两个线程，分别用于局部建图和闭环检测，主线程留着跟踪
+    //参数:词汇文件,视频的参数(比如相机参数等信息),单目,使用视图:true
     ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
 
-    // Vector for tracking time statistics
+    //进入主线程，用于跟踪
+
+
+    // Vector for tracking time statistics 统计每帧的跟踪时间
     vector<float> vTimesTrack;
     vTimesTrack.resize(nImages);
 
@@ -65,7 +78,7 @@ int main(int argc, char **argv)
     for(int ni=0; ni<nImages; ni++)
     {
         // Read image from file
-        im = cv::imread(string(argv[3])+"/"+vstrImageFilenames[ni],CV_LOAD_IMAGE_UNCHANGED);
+        im = cv::imread(string(argv[3])+"/"+vstrImageFilenames[ni],cv::IMREAD_UNCHANGED);
         double tframe = vTimestamps[ni];
 
         if(im.empty())
@@ -125,6 +138,9 @@ int main(int argc, char **argv)
     return 0;
 }
 
+/*
+ * @param strFile rgb.txt的路径
+ * */
 void LoadImages(const string &strFile, vector<string> &vstrImageFilenames, vector<double> &vTimestamps)
 {
     ifstream f;

@@ -36,7 +36,7 @@ MapPoint::MapPoint(const cv::Mat &Pos, KeyFrame *pRefKF, Map* pMap):
     mpReplaced(static_cast<MapPoint*>(NULL)), mfMinDistance(0), mfMaxDistance(0), mpMap(pMap)
 {
     Pos.copyTo(mWorldPos);
-    mNormalVector = cv::Mat::zeros(3,1,CV_32F);
+    mNormalVector = cv::Mat::zeros(3,1,CV_32F);//观察者的方向
 
     // MapPoints can be created from Tracking and Local Mapping. This mutex avoid conflicts with id.
     unique_lock<mutex> lock(mpMap->mMutexPointCreation);
@@ -83,6 +83,7 @@ cv::Mat MapPoint::GetWorldPos()
     return mWorldPos.clone();
 }
 
+//平均观察方向
 cv::Mat MapPoint::GetNormal()
 {
     unique_lock<mutex> lock(mMutexPos);
@@ -102,7 +103,7 @@ void MapPoint::AddObservation(KeyFrame* pKF, size_t idx)
         return;
     mObservations[pKF]=idx;
 
-    if(pKF->mvuRight[idx]>=0)
+    if(pKF->mvuRight[idx]>=0)//
         nObs+=2;
     else
         nObs++;
@@ -148,6 +149,7 @@ int MapPoint::Observations()
     return nObs;
 }
 
+//将坏点从mpMap和观察到它的帧中删除
 void MapPoint::SetBadFlag()
 {
     map<KeyFrame*,size_t> obs;
@@ -199,7 +201,7 @@ void MapPoint::Replace(MapPoint* pMP)
 
         if(!pMP->IsInKeyFrame(pKF))
         {
-            pKF->ReplaceMapPointMatch(mit->second, pMP);
+            pKF->ReplaceMapPointMatch(mit->second, pMP);//mit->second为角点索引,更新该帧的地图点
             pMP->AddObservation(pKF,mit->second);
         }
         else
@@ -221,7 +223,7 @@ bool MapPoint::isBad()
     return mbBad;
 }
 
-void MapPoint::IncreaseVisible(int n)
+void MapPoint::IncreaseVisible(int n)//默认形参为1
 {
     unique_lock<mutex> lock(mMutexFeatures);
     mnVisible+=n;
@@ -239,6 +241,9 @@ float MapPoint::GetFoundRatio()
     return static_cast<float>(mnFound)/mnVisible;
 }
 
+//计算距离的最小中位数的描述符，将具有最小中位数距离的描述符存储在mDescriptor内
+//所谓最小中位数，就是在该地图点对应的所有描述符中，计算它们的相互距离dij，固定i，选取dij的中位数mi，选取mi中的最小值
+//地图点对应的描述符放在vDescriptors中
 void MapPoint::ComputeDistinctiveDescriptors()
 {
     // Retrieve all observed descriptors
@@ -250,7 +255,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
         unique_lock<mutex> lock1(mMutexFeatures);
         if(mbBad)
             return;
-        observations=mObservations;
+        observations=mObservations;//能够观察到的该地图点的关键帧
     }
 
     if(observations.empty())
@@ -260,10 +265,10 @@ void MapPoint::ComputeDistinctiveDescriptors()
 
     for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
-        KeyFrame* pKF = mit->first;
+        KeyFrame* pKF = mit->first;//first为关键帧地址，second当然为该地图点对应于该关键帧内的角点下标啦
 
         if(!pKF->isBad())
-            vDescriptors.push_back(pKF->mDescriptors.row(mit->second));
+            vDescriptors.push_back(pKF->mDescriptors.row(mit->second));//vDescriptors为vector类型，存储它在不同关键帧下的描述子，当然，这些帧能够观察到它
     }
 
     if(vDescriptors.empty())
@@ -272,6 +277,7 @@ void MapPoint::ComputeDistinctiveDescriptors()
     // Compute distances between them
     const size_t N = vDescriptors.size();
 
+    //计算描述子间的相互距离，Distances[i][j]表示vDescriptors[i]和vDescriptors[j]的距离，是对称的数组
     float Distances[N][N];
     for(size_t i=0;i<N;i++)
     {
@@ -285,13 +291,14 @@ void MapPoint::ComputeDistinctiveDescriptors()
     }
 
     // Take the descriptor with least median distance to the rest
+    //n行距离中位数中的最小值，BestMedian记录值，BestIdx记录它在哪一行
     int BestMedian = INT_MAX;
     int BestIdx = 0;
     for(size_t i=0;i<N;i++)
     {
-        vector<int> vDists(Distances[i],Distances[i]+N);
+        vector<int> vDists(Distances[i],Distances[i]+N);//数组名Distances[i]转化为指针，指针类型为元素类型，即float，显然是拷贝数组第i行到vector中
         sort(vDists.begin(),vDists.end());
-        int median = vDists[0.5*(N-1)];
+        int median = vDists[0.5*(N-1)];//距离的中位数
 
         if(median<BestMedian)
         {
@@ -338,19 +345,19 @@ void MapPoint::UpdateNormalAndDepth()
         if(mbBad)
             return;
         observations=mObservations;
-        pRefKF=mpRefKF;
-        Pos = mWorldPos.clone();
+        pRefKF=mpRefKF;//track中的init中，把初始帧当做参考帧
+        Pos = mWorldPos.clone();//3d坐标
     }
 
     if(observations.empty())
         return;
 
-    cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);
+    cv::Mat normal = cv::Mat::zeros(3,1,CV_32F);//所有观测到它的平均视角(3维矢量)
     int n=0;
     for(map<KeyFrame*,size_t>::iterator mit=observations.begin(), mend=observations.end(); mit!=mend; mit++)
     {
         KeyFrame* pKF = mit->first;
-        cv::Mat Owi = pKF->GetCameraCenter();
+        cv::Mat Owi = pKF->GetCameraCenter();//相机中心在世界坐标系中的坐标
         cv::Mat normali = mWorldPos - Owi;
         normal = normal + normali/cv::norm(normali);
         n++;
@@ -358,13 +365,13 @@ void MapPoint::UpdateNormalAndDepth()
 
     cv::Mat PC = Pos - pRefKF->GetCameraCenter();
     const float dist = cv::norm(PC);
-    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;
-    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];
-    const int nLevels = pRefKF->mnScaleLevels;
+    const int level = pRefKF->mvKeysUn[observations[pRefKF]].octave;//图像金字塔的第几层
+    const float levelScaleFactor =  pRefKF->mvScaleFactors[level];//该层的尺度缩放因子,大于1的那个
+    const int nLevels = pRefKF->mnScaleLevels;//一共几层
 
     {
         unique_lock<mutex> lock3(mMutexPos);
-        mfMaxDistance = dist*levelScaleFactor;
+        mfMaxDistance = dist*levelScaleFactor;//到相机中心的距离
         mfMinDistance = mfMaxDistance/pRefKF->mvScaleFactors[nLevels-1];
         mNormalVector = normal/n;
     }
